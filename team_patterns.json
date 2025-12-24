@@ -1,0 +1,28 @@
+{
+  "coding_conventions": {
+    "naming": {
+      "functions": "snake_case",
+      "classes": "PascalCase",
+      "constants": "UPPER_SNAKE_CASE"
+    },
+    "max_line_length": 100,
+    "docstring_style": "google"
+  },
+  "known_patterns": [
+    "Use dependency injection for services",
+    "Always validate user input",
+    "Use async/await for I/O operations",
+    "Follow single responsibility principle"
+  ],
+  "anti_patterns": [
+    "Avoid global state",
+    "Don't use mutable default arguments",
+    "Avoid deep nesting (>3 levels)",
+    "Don't catch generic Exception without logging"
+  ],
+  "recent_refactors": [],
+  "team_members": []
+}
+
+
+
