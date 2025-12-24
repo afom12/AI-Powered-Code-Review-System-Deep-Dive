@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .stat-card h3 {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .section {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .section h2 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+        
+        .review-item {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .review-item:last-child {
+            border-bottom: none;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .badge-critical { background: #fee; color: #c33; }
+        .badge-high { background: #ffe; color: #c93; }
+        .badge-medium { background: #ffe; color: #993; }
+        .badge-low { background: #eef; color: #339; }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .nav a {
+            padding: 0.5rem 1rem;
+            background: white;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #667eea;
+            font-weight: 500;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .nav a:hover {
+            background: #667eea;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔍 Code Review Dashboard</h1>
+        <p>AI-Powered Code Review System Analytics</p>
+    </div>
+    
+    <div class="container">
+        <div class="nav">
+            <a href="/dashboard">Overview</a>
+            <a href="/dashboard/reviews">Reviews</a>
+            <a href="/dashboard/analytics">Analytics</a>
+            <a href="/docs">API Docs</a>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <h3>Total Reviews</h3>
+                <div class="value" id="total-reviews">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Reviews Today</h3>
+                <div class="value" id="reviews-today">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Avg Confidence</h3>
+                <div class="value" id="avg-confidence">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Feedback Ratio</h3>
+                <div class="value" id="feedback-ratio">-</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Recent Reviews</h2>
+            <div id="reviews-list" class="loading">Loading reviews...</div>
+        </div>
+        
+        <div class="section">
+            <h2>Category Distribution</h2>
+            <div id="category-chart" class="loading">Loading chart data...</div>
+        </div>
+    </div>
+    
+    <script>
+        async function loadStats() {
+            try {
+                const response = await fetch('/dashboard/stats');
+                const data = await response.json();
+                
+                document.getElementById('total-reviews').textContent = data.total_reviews || 0;
+                document.getElementById('reviews-today').textContent = data.reviews_today || 0;
+                document.getElementById('avg-confidence').textContent = 
+                    data.average_confidence ? (data.average_confidence * 100).toFixed(1) + '%' : '0%';
+                document.getElementById('feedback-ratio').textContent = 
+                    data.feedback_stats?.positive_ratio ? 
+                    (data.feedback_stats.positive_ratio * 100).toFixed(1) + '%' : '0%';
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+        
+        async function loadReviews() {
+            try {
+                const response = await fetch('/dashboard/reviews?limit=10');
+                const data = await response.json();
+                
+                const reviewsList = document.getElementById('reviews-list');
+                if (data.reviews && data.reviews.length > 0) {
+                    reviewsList.innerHTML = data.reviews.map(review => `
+                        <div class="review-item">
+                            <div>
+                                <strong>${review.title || 'Review'}</strong>
+                                <span class="badge badge-${review.priority || 'medium'}">${review.priority || 'medium'}</span>
+                            </div>
+                            <div>${review.confidence ? (review.confidence * 100).toFixed(0) + '%' : 'N/A'}</div>
+                        </div>
+                    `).join('');
+                } else {
+                    reviewsList.innerHTML = '<p>No reviews yet. Start reviewing PRs to see data here.</p>';
+                }
+            } catch (error) {
+                console.error('Error loading reviews:', error);
+                document.getElementById('reviews-list').innerHTML = '<p>Error loading reviews.</p>';
+            }
+        }
+        
+        // Load data on page load
+        loadStats();
+        loadReviews();
+        
+        // Refresh every 30 seconds
+        setInterval(() => {
+            loadStats();
+            loadReviews();
+        }, 30000);
+    </script>
+</body>
+</html>
+

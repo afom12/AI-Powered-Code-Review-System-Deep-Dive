@@ -53,6 +53,16 @@ app = FastAPI(
     version="0.1.0"
 )
 
+# Include dashboard routes
+try:
+    from .dashboard.routes import router as dashboard_router
+    app.include_router(dashboard_router)
+except ImportError:
+    print("Warning: Dashboard templates not available")
+
+# Include dashboard routes
+app.include_router(dashboard_router)
+
 # Initialize database connections
 neo4j_conn = Neo4jConnection(
     uri=settings.neo4j_uri,

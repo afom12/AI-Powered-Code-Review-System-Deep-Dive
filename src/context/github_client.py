@@ -175,28 +175,62 @@ class GitHubClient:
     def _detect_language(self, filename: str) -> Optional[str]:
         """Detect programming language from filename"""
         extension_map = {
+            # Python
             ".py": "python",
+            ".pyi": "python",
+            ".pyx": "python",
+            # JavaScript/TypeScript
             ".js": "javascript",
-            ".ts": "typescript",
             ".jsx": "jsx",
+            ".mjs": "javascript",
+            ".ts": "typescript",
             ".tsx": "tsx",
+            # Java
             ".java": "java",
+            ".kt": "kotlin",
+            ".scala": "scala",
+            # Go
             ".go": "go",
+            # Rust
             ".rs": "rust",
+            # C/C++
             ".cpp": "cpp",
+            ".cc": "cpp",
+            ".cxx": "cpp",
             ".c": "c",
+            ".h": "c",
+            ".hpp": "cpp",
+            # C#
             ".cs": "csharp",
+            # Ruby
             ".rb": "ruby",
+            ".rake": "ruby",
+            # PHP
             ".php": "php",
+            ".phtml": "php",
+            # Other
             ".sql": "sql",
             ".html": "html",
+            ".htm": "html",
             ".css": "css",
+            ".scss": "css",
+            ".sass": "css",
             ".sh": "shell",
+            ".bash": "shell",
+            ".zsh": "shell",
             ".yaml": "yaml",
             ".yml": "yaml",
             ".json": "json",
+            ".xml": "xml",
+            ".swift": "swift",
+            ".dart": "dart",
+            ".r": "r",
+            ".R": "r",
+            ".m": "objective-c",
+            ".mm": "objective-cpp",
         }
         
+        # Check exact extension match first
         for ext, lang in extension_map.items():
             if filename.endswith(ext):
                 return lang

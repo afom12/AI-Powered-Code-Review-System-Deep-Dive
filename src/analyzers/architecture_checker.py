@@ -28,6 +28,12 @@ class ArchitectureChecker(BaseAnalyzer):
         # Check for large files/functions (complexity)
         results.extend(await self._check_complexity(request))
         
+        # Advanced architecture checks
+        results.extend(await self._check_dependency_injection(request))
+        results.extend(await self._check_interface_segregation(request))
+        results.extend(await self._check_layer_violations(request))
+        results.extend(await self._check_design_patterns(request))
+        
         return self._filter_by_confidence(results, min_confidence=0.5)
     
     async def _check_circular_dependencies(self, request: CodeReviewRequest) -> List[AnalysisResult]:
@@ -142,6 +148,137 @@ class ArchitectureChecker(BaseAnalyzer):
             line_start=1,
             line_end=1
         )
+    
+    async def _check_dependency_injection(self, request: CodeReviewRequest) -> List[AnalysisResult]:
+        """Check for proper dependency injection patterns"""
+        results = []
+        
+        for file_diff in request.diff:
+            # Look for direct instantiation of dependencies (potential violation)
+            if file_diff.language in ["python", "java", "csharp"]:
+                # Check for new/Class() patterns without DI
+                if any(pattern in file_diff.diff for pattern in ["new ", "= Class(", "= Class()"]):
+                    # But allow if constructor injection is used
+                    if "def __init__" not in file_diff.diff and "__init__" not in file_diff.diff:
+                        results.append(AnalysisResult(
+                            category=AnalysisCategory.ARCHITECTURE,
+                            priority=PriorityLevel.MEDIUM,
+                            confidence=0.6,
+                            location=self._get_file_location(file_diff.file_path),
+                            title="Potential dependency injection violation",
+                            description="Direct instantiation detected - consider using dependency injection",
+                            suggestion="Use dependency injection framework or constructor injection for better testability",
+                            metadata={"issue_type": "dependency_injection"}
+                        ))
+        
+        return results
+    
+    async def _check_interface_segregation(self, request: CodeReviewRequest) -> List[AnalysisResult]:
+        """Check for interface segregation principle violations"""
+        results = []
+        
+        for file_diff in request.diff:
+            # Look for interfaces/protocols with many methods
+            if file_diff.language in ["python", "java", "csharp", "go"]:
+                # Count method definitions in interface/protocol
+                method_count = file_diff.diff.lower().count("def ") + file_diff.diff.lower().count("func ")
+                if method_count > 10 and any(keyword in file_diff.diff.lower() for keyword in ["interface", "protocol", "trait"]):
+                    results.append(AnalysisResult(
+                        category=AnalysisCategory.ARCHITECTURE,
+                        priority=PriorityLevel.LOW,
+                        confidence=0.55,
+                        location=self._get_file_location(file_diff.file_path),
+                        title="Large interface detected",
+                        description=f"Interface has {method_count} methods - may violate interface segregation principle",
+                        suggestion="Consider splitting into smaller, focused interfaces",
+                        metadata={"method_count": method_count, "issue_type": "interface_segregation"}
+                    ))
+        
+        return results
+    
+    async def _check_layer_violations(self, request: CodeReviewRequest) -> List[AnalysisResult]:
+        """Check for architectural layer violations"""
+        results = []
+        
+        layer_keywords = {
+            "database": ["sql", "query", "orm", "repository", "dao"],
+            "service": ["service", "business", "logic", "handler"],
+            "controller": ["controller", "route", "endpoint", "api"],
+            "model": ["model", "entity", "dto", "schema"]
+        }
+        
+        for file_diff in request.diff:
+            file_path_lower = file_diff.file_path.lower()
+            detected_layers = []
+            
+            # Detect layer from file path
+            for layer, keywords in layer_keywords.items():
+                if any(keyword in file_path_lower for keyword in keywords):
+                    detected_layers.append(layer)
+            
+            # Check for cross-layer violations
+            diff_lower = file_diff.diff.lower()
+            violations = []
+            
+            if "controller" in detected_layers or "api" in file_path_lower:
+                # Controller shouldn't have database code
+                if any(kw in diff_lower for kw in ["sql", "query(", "orm.", "repository"]):
+                    violations.append("database access in controller")
+            
+            if "model" in detected_layers or "entity" in file_path_lower:
+                # Model shouldn't have business logic
+                if any(kw in diff_lower for kw in ["@app.route", "def process", "def calculate"]):
+                    violations.append("business logic in model")
+            
+            if violations:
+                results.append(AnalysisResult(
+                    category=AnalysisCategory.ARCHITECTURE,
+                    priority=PriorityLevel.MEDIUM,
+                    confidence=0.65,
+                    location=self._get_file_location(file_diff.file_path),
+                    title="Architectural layer violation",
+                    description=f"Detected violations: {', '.join(violations)}",
+                    suggestion="Refactor to maintain proper layer separation (Controller -> Service -> Repository -> Model)",
+                    metadata={"violations": violations, "issue_type": "layer_violation"}
+                ))
+        
+        return results
+    
+    async def _check_design_patterns(self, request: CodeReviewRequest) -> List[AnalysisResult]:
+        """Check for design pattern violations or opportunities"""
+        results = []
+        
+        for file_diff in request.diff:
+            diff_lower = file_diff.diff.lower()
+            
+            # Check for singleton anti-pattern
+            if "singleton" in diff_lower and "getinstance" in diff_lower:
+                results.append(AnalysisResult(
+                    category=AnalysisCategory.ARCHITECTURE,
+                    priority=PriorityLevel.LOW,
+                    confidence=0.5,
+                    location=self._get_file_location(file_diff.file_path),
+                    title="Singleton pattern detected",
+                    description="Singleton pattern can make testing difficult and create hidden dependencies",
+                    suggestion="Consider using dependency injection instead of singleton",
+                    metadata={"pattern": "singleton", "issue_type": "design_pattern"}
+                ))
+            
+            # Check for god object (too many responsibilities)
+            function_count = diff_lower.count("def ") + diff_lower.count("func ") + diff_lower.count("function ")
+            if function_count > 20:
+                results.append(AnalysisResult(
+                    category=AnalysisCategory.ARCHITECTURE,
+                    priority=PriorityLevel.MEDIUM,
+                    confidence=0.6,
+                    location=self._get_file_location(file_diff.file_path),
+                    title="Potential god object",
+                    description=f"File has {function_count} functions - may have too many responsibilities",
+                    suggestion="Consider splitting into smaller, focused classes/modules",
+                    metadata={"function_count": function_count, "issue_type": "god_object"}
+                ))
+        
+        return results
 
 
 

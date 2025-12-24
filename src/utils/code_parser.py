@@ -44,18 +44,36 @@ class CodeParser:
         """Extract function definitions from diff"""
         functions = []
         
-        if language == "python":
-            pattern = r"def\s+(\w+)\s*\([^)]*\)"
-        elif language in ["javascript", "typescript"]:
-            pattern = r"(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:\([^)]*\)\s*=>|function))"
-        else:
+        patterns = {
+            "python": r"def\s+(\w+)\s*\([^)]*\)",
+            "javascript": r"(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:\([^)]*\)\s*=>|function))",
+            "typescript": r"(?:function\s+(\w+)|const\s+(\w+)\s*=\s*(?:\([^)]*\)\s*=>|function)|(\w+)\s*\([^)]*\)\s*:)",
+            "java": r"(?:public|private|protected)?\s*(?:static)?\s*\w+\s+(\w+)\s*\(",
+            "go": r"func\s+(?:\([^)]*\)\s*)?(\w+)\s*\(",
+            "rust": r"fn\s+(\w+)\s*\(",
+            "cpp": r"(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*(?:const)?\s*\{",
+            "c": r"(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{",
+            "csharp": r"(?:public|private|protected)?\s*(?:static)?\s*\w+\s+(\w+)\s*\(",
+            "ruby": r"def\s+(\w+)",
+            "php": r"function\s+(\w+)\s*\(",
+        }
+        
+        pattern = patterns.get(language)
+        if not pattern:
             return functions
         
-        for match in re.finditer(pattern, diff_content):
-            functions.append({
-                "name": match.group(1) or match.group(2),
-                "line": diff_content[:match.start()].count('\n') + 1
-            })
+        for match in re.finditer(pattern, diff_content, re.MULTILINE):
+            name = None
+            for group in match.groups():
+                if group:
+                    name = group
+                    break
+            
+            if name:
+                functions.append({
+                    "name": name,
+                    "line": diff_content[:match.start()].count('\n') + 1
+                })
         
         return functions
     
@@ -64,15 +82,29 @@ class CodeParser:
         """Extract import statements"""
         imports = []
         
-        if language == "python":
-            pattern = r"(?:from\s+(\S+)\s+import|import\s+(\S+))"
-        elif language in ["javascript", "typescript"]:
-            pattern = r"(?:import\s+(?:.*\s+from\s+)?['\"](\S+)['\"]|require\(['\"](\S+)['\"]\))"
-        else:
+        patterns = {
+            "python": r"(?:from\s+(\S+)\s+import|import\s+(\S+))",
+            "javascript": r"(?:import\s+(?:.*\s+from\s+)?['\"](\S+)['\"]|require\(['\"](\S+)['\"]\))",
+            "typescript": r"(?:import\s+(?:.*\s+from\s+)?['\"](\S+)['\"]|require\(['\"](\S+)['\"]\))",
+            "java": r"import\s+(?:static\s+)?([\w.]+)",
+            "go": r"import\s+(?:\([^)]*\)|['\"](\S+)['\"]|(\S+))",
+            "rust": r"use\s+([\w:]+)",
+            "cpp": r"#include\s*[<\"]([\w/]+)[>\"]",
+            "c": r"#include\s*[<\"]([\w/]+)[>\"]",
+            "csharp": r"using\s+([\w.]+)",
+            "ruby": r"require\s+['\"](\S+)['\"]",
+            "php": r"(?:require|include)(?:_once)?\s*['\"](\S+)['\"]",
+        }
+        
+        pattern = patterns.get(language)
+        if not pattern:
             return imports
         
         for match in re.finditer(pattern, diff_content):
-            imports.append(match.group(1) or match.group(2))
+            for group in match.groups():
+                if group:
+                    imports.append(group)
+                    break
         
         return imports
 
